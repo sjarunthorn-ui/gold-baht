@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ราคาทองคำแท่ง 1 บาท Realtime</title>
+<style>
+:root{--bg:#0f1220;--card:#171b2e;--inner:#12162a;--line:#2a3050;--text:#e8eaf3;--mute:#8b92b0;--gold:#f5a30a;--up:#26a69a;--down:#ef5350}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:"Noto Sans Thai",system-ui,-apple-system,"Segoe UI",sans-serif;padding:16px}
+.wrap{max-width:960px;margin:0 auto;display:grid;gap:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+h1{font-size:18px;margin:0 0 2px;color:var(--gold)}
+.sub{color:var(--mute);font-size:13px}
+.head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.status{font-size:12px;color:var(--mute);display:flex;align-items:center;gap:6px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--mute)}
+.dot.ok{background:var(--up);animation:pulse 1.6s infinite}
+.dot.err{background:var(--down)}
+@keyframes pulse{50%{opacity:.35}}
+.price-row{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:10px}
+.price{font-size:48px;font-weight:700;color:var(--gold);font-variant-numeric:tabular-nums;letter-spacing:-.5px;line-height:1.1}
+.unit{color:var(--mute);font-size:14px}
+.chg{font-size:16px;font-variant-numeric:tabular-nums}
+.up{color:var(--up)}.down{color:var(--down)}
+.toolbar{display:flex;gap:6px;margin-bottom:8px}
+.toolbar button{background:var(--inner);color:var(--mute);border:1px solid var(--line);border-radius:8px;padding:5px 12px;font-size:13px;cursor:pointer}
+.toolbar button.on{color:#1a1200;background:var(--gold);border-color:var(--gold)}
+#chart{height:380px;width:100%}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.kv{background:var(--inner);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.kv .k{font-size:12px;color:var(--mute)}
+.kv .v{font-size:19px;font-variant-numeric:tabular-nums;margin-top:2px}
+.kv .n{font-size:11px;color:var(--mute);margin-top:2px}
+.formula{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;color:var(--mute);margin-top:12px;word-break:break-word;line-height:1.6}
+.formula b{color:var(--gold);font-weight:600}
+.controls{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end}
+label{font-size:12px;color:var(--mute);display:grid;gap:4px}
+input{background:var(--inner);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:14px;width:180px}
+input:focus{outline:1px solid var(--gold)}
+.foot{font-size:12px;color:var(--mute);line-height:1.6}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="card">
+    <div class="head">
+      <div>
+        <h1>📈 ราคาทองคำแท่ง 96.5% (บาทละ) — Realtime</h1>
+        <div class="sub">คำนวณจากราคา Gold Spot และ USD/THB สด ตามสูตรมาตรฐานสมาคมค้าทองคำ</div>
+      </div>
+      <div class="status"><span class="dot" id="dot"></span><span id="statusText">กำลังเชื่อมต่อ…</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="price-row">
+      <div class="price" id="price">—</div>
+      <div class="unit">บาท / 1 บาททองคำ</div>
+      <div class="chg" id="chg"></div>
+    </div>
+
+    <div class="toolbar" id="range">
+      <button data-s="900">15 นาที</button>
+      <button data-s="3600">1 ชม.</button>
+      <button data-s="0" class="on">ทั้งหมด</button>
+    </div>
+    <div id="chart"></div>
+  </div>
+
+  <div class="card">
+    <div class="grid">
+      <div class="kv"><div class="k">Gold Spot (USD/oz)</div><div class="v" id="kvSpot">—</div></div>
+      <div class="kv"><div class="k">USD/THB</div><div class="v" id="kvFx">—</div><div class="n" id="kvFxNote"></div></div>
+      <div class="kv"><div class="k">กำไร/ขาดทุนเทียบราคาที่ซื้อ</div><div class="v" id="kvPnl">—</div><div class="n" id="kvPnlNote">ใส่ราคาที่ซื้อด้านล่าง</div></div>
+    </div>
+    <div class="formula" id="formula"></div>
+  </div>
+
+  <div class="card">
+    <div class="controls">
+      <label>USD/THB กำหนดเอง (เว้นว่าง = ดึงอัตโนมัติ)
+        <input id="fxManual" type="number" step="0.01" min="0" placeholder="เช่น 33.50">
+      </label>
+      <label>ราคาที่ซื้อ (บาท/บาททองคำ)
+        <input id="cost" type="number" step="0.01" min="0" placeholder="เช่น 64000.19">
+      </label>
+    </div>
+  </div>
+
+  <div class="foot">
+    ราคานี้เป็นราคาอ้างอิงตามสูตร ไม่ใช่ราคาซื้อขายจริงของร้านทอง ซึ่งอาจต่างกันตามส่วนต่างรับซื้อ-ขายออก และจังหวะที่สมาคมฯ ปรับราคา
+    · ข้อมูลทองโลกจาก gold-api.com และอัตราแลกเปลี่ยนจาก open.er-api.com (สำรอง: frankfurter.app) อัปเดตทุก 5 วินาที
+    · กราฟสะสมจากตอนที่เปิดหน้านี้ (เก็บในเครื่อง ไม่เกิน 24 ชม.)
+  </div>
+</div>
+
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<script>
+(() => {
+  // ---- สูตร ----
+  const GRAMS_PER_BAHT = 15.244, PURITY = 0.965, GRAMS_PER_OZ = 31.1035;
+  const calc = (spot, fx) => spot * fx * GRAMS_PER_BAHT * PURITY / GRAMS_PER_OZ;
+
+  const POLL_MS = 5000, FX_EVERY_MS = 60000, KEEP_SEC = 24 * 3600, MAX_POINTS = 6000;
+  const $ = id => document.getElementById(id);
+  const KEY = { hist: 'gold_baht_hist_v1', fx: 'gold_baht_fx_manual', cost: 'gold_baht_cost' };
+  const load = (k, d) => { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } };
+  const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+
+  const nf0 = new Intl.NumberFormat('th-TH', { maximumFractionDigits: 0 });
+  const nf2 = new Intl.NumberFormat('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const sign = n => (n > 0 ? '+' : n < 0 ? '−' : '');
+
+  // ---- state ----
+  let spot = null, fxAuto = null, fxSource = '', lastFxAt = 0;
+  let fxManual = load(KEY.fx, null);
+  let cost = load(KEY.cost, null);
+  const nowSec = () => Math.floor(Date.now() / 1000);
+  let hist = (load(KEY.hist, []) || []).filter(p => Array.isArray(p) && isFinite(p[0]) && isFinite(p[1]) && p[0] > nowSec() - KEEP_SEC);
+  let tick = 0;
+
+  if (fxManual) $('fxManual').value = fxManual;
+  if (cost) $('cost').value = cost;
+
+  // ---- chart (เวลาแสดงตามเขตเวลาเครื่อง) ----
+  const tzShift = -new Date().getTimezoneOffset() * 60;
+  const disp = t => t + tzShift;
+  let chart = null, series = null, costLine = null;
+
+  if (window.LightweightCharts) {
+    chart = LightweightCharts.createChart($('chart'), {
+      autoSize: true,
+      layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#8b92b0' },
+      grid: { vertLines: { color: '#232844' }, horzLines: { color: '#232844' } },
+      rightPriceScale: { borderColor: '#2a3050' },
+      timeScale: { borderColor: '#2a3050', timeVisible: true, secondsVisible: true },
+      crosshair: { mode: 0 }
+    });
+    series = chart.addAreaSeries({
+      lineColor: '#f5a30a', topColor: 'rgba(245,163,10,.35)', bottomColor: 'rgba(245,163,10,0)',
+      lineWidth: 2, priceFormat: { type: 'price', precision: 0, minMove: 1 }
+    });
+    series.setData(hist.map(p => ({ time: disp(p[0]), value: p[1] })));
+    chart.timeScale().fitContent();
+  } else {
+    $('chart').innerHTML = '<div class="sub" style="padding:40px 0;text-align:center">โหลดไลบรารีกราฟไม่สำเร็จ (ต้องต่ออินเทอร์เน็ต) — ตัวเลขราคายังแสดงตามปกติ</div>';
+  }
+
+  function updateCostLine() {
+    if (!series) return;
+    if (costLine) { series.removePriceLine(costLine); costLine = null; }
+    if (cost > 0) costLine = series.createPriceLine({ price: cost, color: '#26a69a', lineStyle: 2, lineWidth: 1, axisLabelVisible: true, title: 'ซื้อ' });
+  }
+  updateCostLine();
+
+  // ---- data ----
+  async function getJSON(url) {
+    const r = await fetch(url, { cache: 'no-store' });
+    if (!r.ok) throw new Error(url + ' ' + r.status);
+    return r.json();
+  }
+  async function fetchSpot() {
+    const j = await getJSON('https://api.gold-api.com/price/XAU');
+    const p = Number(j.price);
+    if (!isFinite(p) || p <= 0) throw new Error('spot invalid');
+    return p;
+  }
+  async function fetchFx() {
+    const sources = [
+      ['open.er-api.com', async () => (await getJSON('https://open.er-api.com/v6/latest/USD')).rates.THB],
+      ['frankfurter.app', async () => (await getJSON('https://api.frankfurter.app/latest?from=USD&to=THB')).rates.THB]
+    ];
+    for (const [name, fn] of sources) {
+      try { const v = Number(await fn()); if (isFinite(v) && v > 0) return { v, name }; } catch (e) {}
+    }
+    throw new Error('fx unavailable');
+  }
+
+  const fxEff = () => (fxManual > 0 ? fxManual : fxAuto);
+
+  // ---- render ----
+  function setStatus(kind, text) {
+    $('dot').className = 'dot ' + kind;
+    $('statusText').textContent = text;
+  }
+
+  function render(price) {
+    const fx = fxEff();
+    $('kvSpot').textContent = spot ? nf2.format(spot) : '—';
+    $('kvFx').textContent = fx ? nf2.format(fx) : '—';
+    $('kvFxNote').textContent = fxManual > 0 ? 'กำหนดเอง' : (fxSource ? 'อัตโนมัติ · ' + fxSource : '');
+
+    if (price == null) return;
+    $('price').textContent = nf0.format(price);
+
+    if (hist.length > 1) {
+      const base = hist[0][1], d = price - base;
+      const el = $('chg');
+      el.textContent = `${sign(d)}${nf0.format(Math.abs(d))} (${sign(d)}${Math.abs(d / base * 100).toFixed(2)}%) จากจุดแรกในกราฟ`;
+      el.className = 'chg ' + (d > 0 ? 'up' : d < 0 ? 'down' : '');
+    }
+
+    if (cost > 0) {
+      const d = price - cost;
+      $('kvPnl').innerHTML = `<span class="${d >= 0 ? 'up' : 'down'}">${sign(d)}${nf0.format(Math.abs(d))} บาท</span>`;
+      $('kvPnlNote').textContent = `${sign(d)}${Math.abs(d / cost * 100).toFixed(2)}% (ยังไม่หักส่วนต่างรับซื้อ-ขายออก)`;
+    } else {
+      $('kvPnl').textContent = '—';
+      $('kvPnlNote').textContent = 'ใส่ราคาที่ซื้อด้านล่าง';
+    }
+
+    $('formula').innerHTML =
+      `( Gold Spot × USD/THB × 15.244 × 0.965 ) ÷ 31.1035<br>` +
+      `( ${nf2.format(spot)} × ${nf2.format(fx)} × 15.244 × 0.965 ) ÷ 31.1035 = <b>${nf2.format(price)}</b>`;
+  }
+
+  // ---- loop ----
+  async function step() {
+    try {
+      if (!fxAuto || Date.now() - lastFxAt > FX_EVERY_MS) {
+        try { const r = await fetchFx(); fxAuto = r.v; fxSource = r.name; lastFxAt = Date.now(); }
+        catch (e) { if (!fxEff()) throw e; }
+      }
+      spot = await fetchSpot();
+      const fx = fxEff();
+      if (!fx) throw new Error('no fx');
+      const price = calc(spot, fx), t = nowSec();
+
+      const last = hist.length ? hist[hist.length - 1][0] : 0;
+      if (t >= last) {
+        if (t === last) hist[hist.length - 1][1] = price; else hist.push([t, price]);
+        if (series) series.update({ time: disp(t), value: price });
+      }
+      if (hist.length > MAX_POINTS) hist = hist.slice(-MAX_POINTS);
+      if (++tick % 6 === 0) save(KEY.hist, hist);
+
+      render(price);
+      setStatus('ok', 'อัปเดตล่าสุด ' + new Date().toLocaleTimeString('th-TH'));
+    } catch (e) {
+      setStatus('err', 'เชื่อมต่อข้อมูลไม่ได้ — จะลองใหม่ใน 5 วินาที');
+      console.warn(e);
+    }
+  }
+
+  // ---- controls ----
+  const num = v => { const n = parseFloat(v); return isFinite(n) && n > 0 ? n : null; };
+  const rerender = () => { const fx = fxEff(); render(spot && fx ? calc(spot, fx) : null); };
+
+  $('fxManual').addEventListener('input', e => { fxManual = num(e.target.value); save(KEY.fx, fxManual); rerender(); });
+  $('cost').addEventListener('input', e => { cost = num(e.target.value); save(KEY.cost, cost); updateCostLine(); rerender(); });
+
+  $('range').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b || !chart) return;
+    document.querySelectorAll('#range button').forEach(x => x.classList.toggle('on', x === b));
+    const s = Number(b.dataset.s);
+    if (!s) { chart.timeScale().fitContent(); return; }
+    const to = disp(nowSec());
+    chart.timeScale().setVisibleRange({ from: to - s, to: to + 30 });
+  });
+
+  window.addEventListener('pagehide', () => save(KEY.hist, hist));
+
+  step();
+  setInterval(step, POLL_MS);
+})();
+</script>
+</body>
+</html>
